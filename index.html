@@ -3,16 +3,18 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>中国5A景区‑高亮信息面板地图</title>
+<title>中国5A景区-高亮固定信息面板地图</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-html, body, #map { height:100%; margin:0; font-family:"Microsoft YaHei"; }
+html, body { height:100%; margin:0; padding:0; font-family:"Microsoft YaHei"; }
+#map { width:100%; height:100%; }
 .scenic-label {
     background:none; border:none; box-shadow:none;
     font-weight:bold; font-size:11px;
-    text-shadow: 2px 2px 0 #fff, -2px -2px 0 #fff;
+    text-shadow: none;
     white-space:nowrap; pointer-events:auto; cursor:pointer;
+    transition: all 0.2s;
 }
 .label-red { color:#FF0000; font-size:12px; }
 .label-normal { color:#444; font-weight:500; }
@@ -30,23 +32,22 @@ html, body, #map { height:100%; margin:0; font-family:"Microsoft YaHei"; }
 }
 #info-panel {
     position:absolute; top:10px; right:10px;
-    width:90%; max-width:300px; min-height:120px; background:#fff;
+    width:200px; min-height:100px; background:#fff;
     border:1px solid #ccc; padding:10px;
     box-shadow:0 2px 6px rgba(0,0,0,0.3);
     z-index:5000; font-size:13px;
-    overflow:auto;
 }
 .dist-title { font-weight:bold; color:#d32f2f; margin-bottom:5px; }
 .dist-line { display:flex; justify-content:space-between; margin:2px 0; }
 .dist-city { font-weight:bold; }
 .dist-num { color:#2196F3; font-weight:bold; }
-.bili-link {
-    display:block; margin-top:8px;
-    padding:6px; background:#ff0055; color:#fff;
-    text-align:center; border-radius:4px;
-    text-decoration:none; font-weight:bold;
+.search-btn {
+    margin-top:5px; display:block;
+    width:100%; padding:5px 0;
+    background:#2196F3; color:#fff; border:none; border-radius:4px;
+    font-size:12px; cursor:pointer;
 }
-.bili-link:hover { background:#e6004c; }
+.search-btn:active { background:#1976d2; }
 </style>
 </head>
 <body>
@@ -67,6 +68,7 @@ fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
 .then(res => res.json())
 .then(geo => {
     const colors = ['#fbb4ae','#b3cde3','#ccebc5','#decbe4','#fed9a6','#ffffcc','#e5d8bd','#fddaec'];
+    const fonts = ['"STKaiti"','"Microsoft YaHei"','"SimHei"','"STXingkai"','"STLiti"'];
     function getStyle(str,pool){ let hash=0; for(let i=0;i<str.length;i++) hash=str.charCodeAt(i)+((hash<<5)-hash); return pool[Math.abs(hash)%pool.length]; }
     L.geoJSON(geo, {
         style: f => ({ fillColor:getStyle(f.properties.name,colors), weight:1.5, opacity:1, color:'#fff', fillOpacity:0.5 })
@@ -78,14 +80,14 @@ fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
         L.marker([cp[1], cp[0]], {
             icon: L.divIcon({
                 className:'province-name-label',
-                html:'<div style="font-family:' + getStyle(name,['STKaiti','Microsoft YaHei','SimHei','STXingkai','STLiti']) + '; font-size:48px;">' + name + '</div>',
+                html:`<div style="font-family:${getStyle(name,fonts)}; font-size:48px;">${name}</div>`,
                 iconSize:[250,60]
             }), interactive:false
         }).addTo(map);
     });
 });
 
-// 面板更新及自动 Bilibili 搜索
+// 固定信息面板更新函数
 function updateInfo(item, dot, labelEl) {
     if(window.lastHighlight){
         window.lastHighlight.setStyle({radius: window.lastHighlight.originalRadius, fillColor: window.lastHighlight.originalColor});
@@ -96,12 +98,12 @@ function updateInfo(item, dot, labelEl) {
     window.lastHighlight = dot;
     window.lastHighlight.labelEl = labelEl;
 
-    let html = '<div class="dist-title">' + item.name + ' (' + item.year + ')</div>';
+    let html = `<div class="dist-title">${item.name} (${item.year})</div>`;
     starts.forEach((s,idx)=>{
         const d = (map.distance(L.latLng(item.coords[1],item.coords[0]), startLatLngs[idx])/1000).toFixed(0);
-        html += '<div class="dist-line"><span class="dist-city">到' + s.name + ':</span><span class="dist-num">' + d + ' km</span></div>';
+        html += `<div class="dist-line"><span class="dist-city">到${s.name}:</span><span class="dist-num">${d} km</span></div>`;
     });
-    html += '<a class="bili-link" href="https://search.bilibili.com/all?keyword=' + encodeURIComponent(item.name) + '" target="_blank">🔍 在Bilibili搜索 "' + item.name + '"</a>';
+    html += `<button class="search-btn" onclick="window.open('https://search.bilibili.com/all?keyword='+encodeURIComponent('${item.name}'))">Bilibili搜索</button>`;
     document.getElementById('info-panel').innerHTML = html;
 }
 
@@ -131,23 +133,23 @@ scenicData.forEach(item => {
 });
 
 // 出发点
-starts.forEach(pt =>{
+starts.forEach(pt => {
     L.marker([pt.coords[1], pt.coords[0]], {
         icon:L.divIcon({
-            className:'start-node',
-            html:'<div class="start-node">' + pt.name + '</div>',
+            className:'dummy',
+            html:`<div class="start-node">${pt.name}</div>`,
             iconSize:[60,25]
         }), zIndexOffset:5000
     }).addTo(map);
 });
 
-// 标签防重叠
+// 标签防碰撞
 function refresh() {
     const zoom = map.getZoom();
     if(zoom<6){ labelList.forEach(l=>l.el.setOpacity(0)); return; }
     labelList.sort((a,b)=>b.priority-a.priority);
     const box=[];
-    labelList.forEach(l =>{
+    labelList.forEach(l => {
         const p = map.latLngToLayerPoint(l.latlng);
         const w = l.name.length*13, h=20;
         const rect = {x1:p.x-w/2, y1:p.y-h, x2:p.x+w/2, y2:p.y};
